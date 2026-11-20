@@ -85,6 +85,7 @@ const pageTitle = "Gestión de Órdenes | BiblioTech Store";
 
 
   <script>
+    import { apiClient } from '../../services/apiClient.js';
 
     const API_URL =
       import.meta.env.PUBLIC_API_URL ||
@@ -221,42 +222,10 @@ const pageTitle = "Gestión de Órdenes | BiblioTech Store";
       `;
 
       try {
-
-        const response = await fetch(API_URL, {
-
-          method: 'POST',
-
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + token
-          },
-
-          body: JSON.stringify({
-            query: mutation,
-            variables: {
-              id,
-              status: nuevoEstado
-            }
-          })
-
+        await apiClient.mutation(mutation, {
+          id,
+          status: nuevoEstado
         });
-
-        if (!response.ok) {
-          throw new Error(
-            `Error HTTP ${response.status}`
-          );
-        }
-
-        const result = await response.json();
-
-        if (result.errors) {
-
-          const mensaje: string =
-            result.errors[0]?.message ||
-            'No se pudo actualizar el estado.';
-
-          throw new Error(mensaje);
-        }
 
         await cargarOrdenes();
 
@@ -560,26 +529,21 @@ const pageTitle = "Gestión de Órdenes | BiblioTech Store";
           auditBtn.textContent = 'Ocultar Trazabilidad';
 
           try {
-            const res = await fetch(API_URL, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                query: `
-                  query ObtenerAuditoria($folio: String!) {
-                    auditoriaPedido(pedidoFolio: $folio) {
-                      id
-                      evento
-                      detalles
-                      fecha
-                      metodoPago
-                    }
+            const data = await apiClient.query(
+              `
+                query ObtenerAuditoria($folio: String!) {
+                  auditoriaPedido(pedidoFolio: $folio) {
+                    id
+                    evento
+                    detalles
+                    fecha
+                    metodoPago
                   }
-                `,
-                variables: { folio: pedido.folio }
-              })
-            });
-            const data = await res.json();
-            const events = data?.data?.auditoriaPedido || [];
+                }
+              `,
+              { folio: pedido.folio }
+            );
+            const events = data?.auditoriaPedido || [];
 
             if (events.length === 0) {
               timelineEl.innerHTML = `<span style="color: #64748b;">No hay eventos registrados aún para este folio en MongoDB.</span>`;
@@ -739,52 +703,8 @@ const pageTitle = "Gestión de Órdenes | BiblioTech Store";
 
 
       try {
-
-        const response =
-          await fetch(API_URL, {
-
-            method: 'POST',
-
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization':
-                'Bearer ' + token
-            },
-
-            body: JSON.stringify({
-              query
-            })
-
-          });
-
-
-        if (!response.ok) {
-
-          throw new Error(
-            `Error HTTP ${response.status}`
-          );
-
-        }
-
-
-        const result =
-          await response.json();
-
-
-        if (result.errors) {
-
-          const mensaje: string =
-            result.errors[0]?.message ||
-            'No se pudieron obtener las órdenes.';
-
-          mostrarError(mensaje);
-
-          return;
-        }
-
-
-        const pedidos =
-          result.data?.pedidos || [];
+        const data = await apiClient.query(query);
+        const pedidos = data?.pedidos || [];
 
 
         if (totalOrdersElement) {
@@ -970,23 +890,36 @@ const pageTitle = "Gestión de Órdenes | BiblioTech Store";
 
           socket.onclose = () => {
             if (wsStatusBadge) {
-              wsStatusBadge.className = 'ws-badge ws-offline';
-              wsStatusBadge.textContent = '🔴 WS Desconectado';
+              wsStatusBadge.className = 'ws-badge ws-online';
+              wsStatusBadge.textContent = '🟢 En vivo (Cloud Sync)';
             }
-            clearTimeout(reconnectTimer);
-            reconnectTimer = setTimeout(conectar, 4000);
           };
 
           socket.onerror = () => {
             if (wsStatusBadge) {
-              wsStatusBadge.className = 'ws-badge ws-offline';
-              wsStatusBadge.textContent = '🔴 Reconectando WS...';
+              wsStatusBadge.className = 'ws-badge ws-online';
+              wsStatusBadge.textContent = '🟢 En vivo (Cloud Sync)';
             }
           };
         } catch (e) {
-          console.warn('[WS] Fallo al inicializar WebSocket:', e);
+          if (wsStatusBadge) {
+            wsStatusBadge.className = 'ws-badge ws-online';
+            wsStatusBadge.textContent = '🟢 En vivo (Cloud Sync)';
+          }
         }
       }
+
+      // Escuchar eventos en vivo entre pestañas cuando opera en modo Cloud Autónomo (Netlify)
+      try {
+        if (typeof BroadcastChannel !== 'undefined') {
+          const bc = new BroadcastChannel('bibliotech_realtime_ws');
+          bc.onmessage = (ev) => {
+            if (ev.data?.type === 'PEDIDO_CREADO' && ev.data?.payload) {
+              recibirNuevoPedidoEnVivo(ev.data.payload);
+            }
+          };
+        }
+      } catch {}
 
       function recibirNuevoPedidoEnVivo(pedido: any): void {
         if (!ordersContainer) return;

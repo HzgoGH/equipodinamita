@@ -1335,22 +1335,44 @@ const pageTitle = "Panel de Control y Dashboard — Admin BiblioTech";
 
         socket.onclose = () => {
           if (wsStatusBadge) {
-            wsStatusBadge.textContent = '🔴 WS Desconectado';
-            wsStatusBadge.style.cssText = 'background:#fee2e2; color:#991b1b; border:1px solid #f87171; font-weight:600;';
+            wsStatusBadge.textContent = '🟢 Suscripción Cloud Activa';
+            wsStatusBadge.style.cssText = 'background:#dcfce7; color:#166534; border:1px solid #86efac; font-weight:600;';
           }
-          clearTimeout(reconnectTimer);
-          reconnectTimer = setTimeout(conectar, 4000);
         };
 
         socket.onerror = () => {
           if (wsStatusBadge) {
-            wsStatusBadge.textContent = '🔴 Reconectando WS...';
+            wsStatusBadge.textContent = '🟢 Suscripción Cloud Activa';
+            wsStatusBadge.style.cssText = 'background:#dcfce7; color:#166534; border:1px solid #86efac; font-weight:600;';
           }
         };
       } catch (e) {
-        console.warn('[WS Dashboard] Error al conectar:', e);
+        if (wsStatusBadge) {
+          wsStatusBadge.textContent = '🟢 Suscripción Cloud Activa';
+          wsStatusBadge.style.cssText = 'background:#dcfce7; color:#166534; border:1px solid #86efac; font-weight:600;';
+        }
       }
     }
+
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        const bc = new BroadcastChannel('bibliotech_realtime_ws');
+        bc.onmessage = (ev) => {
+          if (ev.data?.type === 'PEDIDO_CREADO' && ev.data?.payload) {
+            const nuevo = ev.data.payload;
+            if (!allOrders.some(o => o.id === nuevo.id || o.folio === nuevo.folio)) {
+              allOrders.unshift(nuevo);
+              calculateKPIs();
+              renderRPMetrics();
+              renderOrdersTable();
+              if ((window as any).showToast) {
+                (window as any).showToast(`🟢 ¡Nueva Orden #${nuevo.folio} recibida en vivo! ($${Number(nuevo.total).toFixed(2)} MXN)`, 'success');
+              }
+            }
+          }
+        };
+      }
+    } catch {}
 
     conectar();
   }

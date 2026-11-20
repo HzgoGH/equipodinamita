@@ -348,6 +348,8 @@
 </style>
 
 <script>
+  import { apiClient } from '../services/apiClient.js';
+
   function setupGeminiWidget() {
     const toggleBtn = document.getElementById('gemini-toggle-btn');
     const closeBtn = document.getElementById('gemini-close-btn');
@@ -401,13 +403,7 @@
       messages.scrollTop = messages.scrollHeight;
 
       try {
-        const res = await fetch('http://localhost:4000/api/chat-gemini', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: text })
-        });
-
-        const data = await res.json();
+        const data = await apiClient.chatGemini(text);
         typingDiv.remove();
 
         const aiDiv = document.createElement('div');

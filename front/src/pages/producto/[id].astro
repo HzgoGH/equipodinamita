@@ -623,6 +623,7 @@ const pageTitle = `${book.titulo} — BiblioTech Store`;
 
 <script>
   import { cartService } from '../../services/cart.js';
+  import { apiClient } from '../../services/apiClient.js';
 
   function setupProductActions() {
     const dataEl = document.getElementById('product-page-data');
@@ -754,28 +755,22 @@ const pageTitle = `${book.titulo} — BiblioTech Store`;
     async function loadReviews() {
       if (!reviewsContainer) return;
       try {
-        const res = await fetch('http://localhost:4000/graphql', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            query: `
-              query ObtenerResenas($productoId: ID!) {
-                resenasPorProducto(productoId: $productoId) {
-                  id
-                  usuarioNombre
-                  calificacion
-                  comentario
-                  fecha
-                  verificado
-                }
+        const data = await apiClient.query(
+          `
+            query ObtenerResenas($productoId: ID!) {
+              resenasPorProducto(productoId: $productoId) {
+                id
+                usuarioNombre
+                calificacion
+                comentario
+                fecha
+                verificado
               }
-            `,
-            variables: { productoId: bookId }
-          })
-        });
-
-        const data = await res.json();
-        const list = data?.data?.resenasPorProducto || [];
+            }
+          `,
+          { productoId: bookId }
+        );
+        const list = data?.resenasPorProducto || [];
 
         if (list.length === 0) {
           reviewsContainer.innerHTML = `
@@ -827,32 +822,27 @@ const pageTitle = `${book.titulo} — BiblioTech Store`;
         submitBtn.textContent = 'Guardando en MongoDB...';
 
         try {
-          const res = await fetch('http://localhost:4000/graphql', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              query: `
-                mutation CrearResenaNoSQL($productoId: ID!, $nombre: String!, $calificacion: Int!, $comentario: String!) {
-                  crearResena(productoId: $productoId, usuarioNombre: $nombre, calificacion: $calificacion, comentario: $comentario) {
-                    id
-                    usuarioNombre
-                    calificacion
-                    comentario
-                    fecha
-                  }
+          const data = await apiClient.mutation(
+            `
+              mutation CrearResenaNoSQL($productoId: ID!, $nombre: String!, $calificacion: Int!, $comentario: String!) {
+                crearResena(productoId: $productoId, usuarioNombre: $nombre, calificacion: $calificacion, comentario: $comentario) {
+                  id
+                  usuarioNombre
+                  calificacion
+                  comentario
+                  fecha
                 }
-              `,
-              variables: {
-                productoId: bookId,
-                nombre,
-                calificacion,
-                comentario
               }
-            })
-          });
+            `,
+            {
+              productoId: bookId,
+              nombre,
+              calificacion,
+              comentario
+            }
+          );
 
-          const data = await res.json();
-          if (data?.data?.crearResena) {
+          if (data?.crearResena) {
             if ((window as any).showToast) {
               (window as any).showToast('¡Reseña guardada exitosamente en MongoDB NoSQL!', 'success');
             }
@@ -860,7 +850,7 @@ const pageTitle = `${book.titulo} — BiblioTech Store`;
             if (formContainer) formContainer.style.display = 'none';
             await loadReviews();
           } else {
-            throw new Error(data.errors?.[0]?.message || 'Error al guardar');
+            throw new Error('Error al guardar reseña');
           }
         } catch (err: any) {
           if ((window as any).showToast) {
