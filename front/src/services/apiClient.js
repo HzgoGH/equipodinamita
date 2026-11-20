@@ -498,11 +498,45 @@ export async function chatGeminiWithFallback(message) {
     };
   }
 
-  if (msg.includes('stock') || msg.includes('precio') || msg.includes('cuesta') || msg.includes('disponible') || msg.includes('dune') || msg.includes('fundacion') || msg.includes('resplandor')) {
-    const found = products.find(p => msg.includes(p.titulo.toLowerCase())) || products[0];
+  if (
+    msg.includes('stock') ||
+    msg.includes('precio') ||
+    msg.includes('cuesta') ||
+    msg.includes('disponible') ||
+    msg.includes('quedan') ||
+    msg.includes('cuantos') ||
+    msg.includes('cuántos') ||
+    msg.includes('inventario') ||
+    msg.includes('existencia')
+  ) {
+    // Buscar coincidencia flexible por título completo, primera parte del título (antes de ':'), palabras clave o autor
+    const stopWords = ['cuantos', 'cuántos', 'libros', 'libro', 'quedan', 'disponibles', 'disponible', 'hay', 'stock', 'precio', 'cuesta', 'del', 'de', 'la', 'el', 'en', 'tiene', 'tienen', 'inventario', 'existencias'];
+    const queryWords = msg
+      .replace(/[¿?¡!.,:"]/g, ' ')
+      .split(/\s+/)
+      .filter(w => w.length >= 3 && !stopWords.includes(w));
+
+    let found = products.find(p => {
+      const fullTitle = p.titulo.toLowerCase();
+      const shortTitle = fullTitle.split(':')[0].trim();
+      return msg.includes(fullTitle) || (shortTitle.length >= 3 && msg.includes(shortTitle));
+    });
+
+    if (!found && queryWords.length > 0) {
+      found = products.find(p => {
+        const target = `${p.titulo} ${p.autor} ${p.isbn || ''}`.toLowerCase();
+        return queryWords.some(w => target.includes(w));
+      });
+    }
+
+    // Si pregunta "del libro que acabo de agregar/crear" o no especificó nombre, tomar el más reciente (products[0])
+    if (!found) {
+      found = products[0];
+    }
+
     return {
       toolExecuted: 'check_stock',
-      reply: `✨ **[BiblioTech AI con Gemini & MCP]**: Consulté el inventario en tiempo real con \`check_stock\`.\nEl libro **"${found.titulo}"** de **${found.autor}** tiene **${found.stock} unidades disponibles** a un precio de **$${Number(found.precio).toFixed(2)} MXN** (Editorial: ${found.editorial}).`
+      reply: `✨ **[BiblioTech AI con Gemini & MCP]**: Consulté el inventario en tiempo real con \`check_stock\`.\nEl libro **"${found.titulo}"** de **${found.autor}** tiene actualmente **${found.stock} unidades disponibles** en inventario a un precio de **$${Number(found.precio).toFixed(2)} MXN** (ISBN: ${found.isbn || 'N/A'}).`
     };
   }
 

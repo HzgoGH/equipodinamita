@@ -116,9 +116,24 @@ Usa siempre estas herramientas cuando el usuario te pregunte por libros, stock, 
   let toolResult = null;
   let reply = '';
 
-  if (msg.includes('dune') || msg.includes('stock') || msg.includes('existencia') || msg.includes('disponible') || msg.includes('inventario')) {
+  if (
+    msg.includes('dune') ||
+    msg.includes('stock') ||
+    msg.includes('existencia') ||
+    msg.includes('disponible') ||
+    msg.includes('inventario') ||
+    msg.includes('quedan') ||
+    msg.includes('cuantos') ||
+    msg.includes('cuántos') ||
+    msg.includes('precio')
+  ) {
     toolExecuted = 'check_stock';
-    toolArgs = { titulo: msg.includes('dune') ? 'Dune' : (msg.includes('cien') ? 'Cien Años de Soledad' : 'Dune') };
+    const cleaned = userMessage
+      .replace(/[¿?¡!.,:"]/g, ' ')
+      .replace(/\b(cuantos|cuántos|libros|libro|quedan|disponibles|disponible|hay|en|stock|existencias|existencia|inventario|precio|cuesta|de|del|la|el|tiene|tienen|por|favor)\b/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    toolArgs = { titulo: cleaned || 'Dune' };
     toolResult = await executeMcpTool('check_stock', toolArgs);
     
     if (toolResult.found) {
