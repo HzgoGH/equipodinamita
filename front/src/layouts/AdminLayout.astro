@@ -136,34 +136,12 @@ const { pageTitle } = Astro.props;
           });
         }
 
+      // Candado de seguridad en Frontend (Guard RBAC): solo permite acceso a usuarios con rol ADMIN
       async function verifyAdminAccess() {
-        // Chat me ha recomendado mejor usar este proceso para que  
-        // la función de autorización consulte al backend incluso si hay un usuario guardado en localStorage.
-        // Así no dependemos únicamente de un rol almacenado en el navegador.
-    
         const redirectPath = window.location.pathname + window.location.search;
         const token = authService.getToken();
 
-        if (!token) {
-        window.location.replace(
-            `/login?redirect=${encodeURIComponent(redirectPath)}`
-        );
-        return;
-        }
-
-        // Obtener el usuario actual desde el backend.
-        const user = await authService.getMe();
-
-        if (!user || user.rol !== 'ADMIN') {
-        authService.logout();
-        window.location.replace('/');
-        return;
-        }
-       // Chat me ha recomendado cambiar este pedazo por el de arriba 
-        /*
-        const redirectPath = window.location.pathname + window.location.search;
-        const token = authService.getToken();
-
+        // 1. Si no hay token JWT, redirigir al login
         if (!token) {
           window.location.replace(
             `/login?redirect=${encodeURIComponent(redirectPath)}`
@@ -171,11 +149,10 @@ const { pageTitle } = Astro.props;
           return;
         }
 
-        let user = authService.getUser();
-
-        // Si no hay usuario guardado, intenta recuperarlo del backend.
+        // 2. Validar sesión y rol ADMIN contra el backend (o sesión activa local)
+        let user = await authService.getMe();
         if (!user) {
-          user = await authService.getMe();
+          user = authService.getUser();
         }
 
         if (!user || user.rol !== 'ADMIN') {
@@ -184,7 +161,10 @@ const { pageTitle } = Astro.props;
           return;
         }
 
-        sessionName.textContent = user.nombre || user.email || 'Administrador';
+        // 3. Mostrar nombre del administrador y habilitar el panel
+        if (sessionName) {
+          sessionName.textContent = user.nombre || user.email || 'Administrador';
+        }
 
         const currentPath = window.location.pathname.replace(/\/+$/, '') || '/admin';
 
@@ -200,9 +180,8 @@ const { pageTitle } = Astro.props;
           else link.removeAttribute('aria-current');
         });
 
-        accessMessage.hidden = true;
-        shell.hidden = false;
-        */
+        if (accessMessage) accessMessage.hidden = true;
+        if (shell) shell.hidden = false;
       }
 
       verifyAdminAccess().catch(() => {

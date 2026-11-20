@@ -9,6 +9,7 @@ import { getPostgresStatus } from './postgres.js';
 // PROTECCIÓN DE ROL
 // ============================================================
 
+// Verifica que exista un usuario autenticado en el contexto de GraphQL
 function requireAuth(context) {
   if (!context?.currentUser) {
     throw new Error('No autorizado: debe iniciar sesión.');
@@ -16,6 +17,7 @@ function requireAuth(context) {
   return context.currentUser;
 }
 
+// Candado de backend: bloquea la operación si el usuario no tiene rol ADMIN
 function requireAdmin(context) {
   const user = requireAuth(context);
   if (user.rol !== 'ADMIN') {
@@ -24,6 +26,7 @@ function requireAdmin(context) {
   return user;
 }
 
+// Publica eventos en el canal de WebSockets sin detener el flujo si no hay oyentes
 function safePublish(topic, payload) {
   try {
     if (pubsub && typeof pubsub.publish === 'function') {

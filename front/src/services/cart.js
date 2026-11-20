@@ -1,7 +1,9 @@
 const CART_KEY = 'ecommerce_cart';
 const COUPON_KEY = 'ecommerce_active_coupon';
 
+// Servicio de estado global del carrito: sincroniza las islas de React usando localStorage y eventos del navegador
 export const cartService = {
+  // Lee los libros actuales guardados en el navegador
   getItems: () => {
     if (typeof localStorage === 'undefined') return [];
     try {
@@ -12,6 +14,7 @@ export const cartService = {
     }
   },
 
+  // Guarda el carrito y lanza el evento 'cart-updated' para que el Navbar y las islas se actualicen al instante
   saveItems: (items) => {
     if (typeof localStorage === 'undefined') return;
     localStorage.setItem(CART_KEY, JSON.stringify(items));
@@ -20,6 +23,7 @@ export const cartService = {
     }
   },
 
+  // Agrega un libro validando antes que la cantidad no supere el stock disponible
   addItem: (product, quantity = 1) => {
     const items = cartService.getItems();
     const existingIndex = items.findIndex((i) => String(i.id) === String(product.id));

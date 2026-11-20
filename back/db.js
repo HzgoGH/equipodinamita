@@ -14,6 +14,7 @@ export const db = new DatabaseSync(dbPath);
 
 const JWT_SECRET = process.env.JWT_SECRET || 'bibliotech_secret_key_ceti_2026_integrador';
 
+// Genera el token de sesión codificando los datos del usuario en Base64 y firmándolo con HMAC-SHA256
 export function generateToken(usuario) {
   const payload = {
     id: usuario.id,
@@ -26,6 +27,7 @@ export function generateToken(usuario) {
   return `${payloadB64}.${signature}`;
 }
 
+// Verifica que la firma del token coincida con nuestra llave secreta y que no haya expirado
 export function verifyToken(token) {
   if (!token || typeof token !== 'string') return null;
   const cleanToken = token.startsWith('Bearer ') ? token.slice(7).trim() : token.trim();
@@ -426,10 +428,11 @@ export const dbRepo = {
       if (u) validUsuarioId = u.id;
     }
 
-    // 3. Ejecutar insercion y actualizacion de stock
+    // 3. Ejecutar insercion y actualizacion de stock dentro de una transacción atómica
+    // Si algo falla a la mitad, el ROLLBACK deshace todo para no descontar stock sin crear pedido
     db.exec('BEGIN TRANSACTION;');
     try {
-      // Insertar pedido
+      // Insertar cabecera del pedido
       const stmtPedido = db.prepare(`
         INSERT INTO pedidos (folio, fecha, subtotal, envio, total, status, metodoPago, direccionEnvio, nombreCliente, emailCliente, usuarioId, detallesPago, referenciaPago)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -451,7 +454,7 @@ export const dbRepo = {
       );
       const pedidoId = pedidoInfo.lastInsertRowid;
 
-      // Insertar detalles y descontar stock
+      // Insertar cada libro comprado en detalles_pedido y restar su stock
       const stmtDetalle = db.prepare(`
         INSERT INTO detalles_pedido (pedidoId, productoId, cantidad, precioUnitario, subtotal)
         VALUES (?, ?, ?, ?, ?)
@@ -465,9 +468,11 @@ export const dbRepo = {
         stmtStock.run(p.cantidad, p.producto.id);
       }
 
+      // Confirmar los cambios definitivamente
       db.exec('COMMIT;');
       return dbRepo.getPedidoById(pedidoId);
     } catch (err) {
+      // Si hubo error, revertimos cualquier cambio hecho en esta transacción
       db.exec('ROLLBACK;');
       throw new Error(`Error al procesar el pedido: ${err.message}`);
     }

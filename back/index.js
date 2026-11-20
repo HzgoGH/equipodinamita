@@ -17,19 +17,19 @@ import { initMongoDB, getMongoStatus } from './mongodb.js';
 import { MCP_TOOLS_DEFINITIONS, executeMcpTool } from './mcp_tools.js';
 import { chatWithGemini } from './gemini_assistant.js';
 
-// 1. Inicializar la base de datos relacional SQLite
+// 1. Inicializar la base de datos relacional SQLite y conectar motores duales (PostgreSQL y MongoDB)
 initDB();
 await initPostgres();
 await initMongoDB();
 
-// 2. Unificar schema ejecutable con makeExecutableSchema
+// 2. Unificar schema ejecutable con makeExecutableSchema (une tipos de schema.js y funciones de resolvers.js)
 const schema = makeExecutableSchema({ typeDefs, resolvers });
 
-// 3. Crear app de Express y servidor HTTP nativo
+// 3. Crear app de Express y servidor HTTP nativo (necesario para compartir el puerto 4000 con WebSockets)
 const app = express();
 const httpServer = http.createServer(app);
 
-// 4. Configurar WebSocketServer dedicado para suscripciones en /graphql
+// 4. Configurar WebSocketServer dedicado para suscripciones en /graphql (tiempo real)
 const wsServer = new WebSocketServer({
   server: httpServer,
   path: '/graphql'
@@ -119,6 +119,7 @@ app.use(
 
 app.use(express.json());
 
+// En cada petición GraphQL verificamos si viene el token Bearer para saber quién es el usuario y su rol
 const apolloMiddleware = expressMiddleware(server, {
   context: async ({ req }) => {
     const rawHeader = req.headers.authorization || '';
