@@ -1,5 +1,7 @@
 # BiblioTech Store — E-Commerce Full-Stack de Libros (Entrega Final: Pasos 1 al 6)
 
+[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/wilfultortoise-sudo/equipodinamita)
+
 Plataforma full-stack de comercio electrónico especializada en libros, construida con **Astro 5 + React 18 (Arquitectura de Islas con Zustand)** en el frontend y **Node.js + Apollo Server 4 (GraphQL HTTP + Suscripciones WebSocket `graphql-ws`)** en el backend, equipada con **Persistencia Híbrida Dual (PostgreSQL/SQLite + MongoDB Atlas/JSON)**, **5 APIs de Terceros**, **Pipeline CI/CD en GitHub Actions** y **Asistente Inteligente con Google Gemini y Model Context Protocol (MCP)**.
 
 ---
