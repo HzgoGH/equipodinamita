@@ -8,6 +8,8 @@ dist/
 front/dist/
 .astro/
 front/.astro/
+.netlify/
+front/.netlify/
 
 # Environment files
 .env
